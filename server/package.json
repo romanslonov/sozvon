@@ -1,0 +1,22 @@
+{
+  "name": "rainbow-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "serve": "nodemon"
+  },
+  "keywords": [],
+  "author": "Roman Slonov",
+  "license": "MIT",
+  "devDependencies": {
+    "nodemon": "^2.0.3"
+  },
+  "dependencies": {
+    "@koa/cors": "^2.2.3",
+    "koa": "^2.11.0",
+    "koa-helmet": "^5.2.0",
+    "koa-static": "^5.0.0",
+    "socket.io": "^2.3.0"
+  }
+}

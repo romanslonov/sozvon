@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div class="videos">
+    <div>
+        <video width="160" height="120" id="localVideo" autoplay muted playsinline></video>
+        <!-- <div class="soundbar"><span class="currentVolume"></span></div> -->
+    </div>
+  </div>
+
+  <br />
+  <div id="connections"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+
+  <script>
+    let localVideo;
+    let firstPerson = false;
+    let socketCount = 0;
+    let socketId;
+    let localStream;
+    let connections = [];
+    const room = '1qaz2wsx';
+
+    const peerConnectionConfig = {
+      'iceServers': [
+        {'urls': 'stun:stun.services.mozilla.com'},
+        {'urls': 'stun:stun.l.google.com:19302'},
+      ],
+    };
+
+    const constrants = { video: true, audio: true };
+
+    window.onload = () => {
+      localVideo = document.getElementById('localVideo');
+      remoteVideo = document.getElementById('remoteVideo');
+
+      navigator.mediaDevices.getUserMedia(constrants)
+      .then(getUserMedia)
+      .then(() => {
+        const socket = io('http://localhost:3000');
+
+        socket.on('signal', (fromId, message) => {
+          gotMessageFromServer(fromId, message, socket);
+        });
+
+        socket.on('connect', () => {
+          console.log('[socket.io]: connected ', socket.id);
+
+          socketId = socket.id;
+
+          socket.on('user-left', (id) => {
+            const video = document.querySelector('[data-socket="'+ id +'"]');
+            const parentDiv = video.parentElement;
+            video.parentElement.parentElement.removeChild(parentDiv);
+          });
+
+          socket.on('user-joined', (id, count, clients) => {
+            clients.forEach((socketListId) => {
+              if(!connections[socketListId]) {
+                connections[socketListId] = new RTCPeerConnection(peerConnectionConfig);
+
+                connections[socketListId].onicecandidate = (event) => {
+                  if (event.candidate) {
+                    socket.emit('signal', socketListId, { ice: event.candidate });
+                  }
+                };
+
+                //Wait for their video stream
+                connections[socketListId].ontrack = (event) => {
+                  gotRemoteStream(event, socketListId);
+                };
+
+                //Add the local video stream
+                localStream.getTracks().forEach((track) => {
+                  connections[socketListId].addTrack(track, localStream);
+                });
+              }
+            });
+
+            //Create an offer to connect with your local description
+            if(count >= 2){
+              connections[id].createOffer().then((description) => {
+                connections[id].setLocalDescription(description).then(() => {
+                  console.log(connections);
+                  socket.emit('signal', id, {'sdp': connections[id].localDescription});
+                }).catch(e => console.log(e));        
+              });
+            }
+          });
+        });
+
+
+
+
+
+        // const socket = io('http://localhost:3000');
+        // const pc = new RTCPeerConnection(peerConnectionConfig);
+
+        // pc.onicecandidate = ({ candidate }) => {
+        //   if (candidate) {
+        //     socket.emit('candidate.send', { room, candidate });
+        //   }
+        // }
+
+        // pc.ontrack = (event) => {
+        //   const remoteStreamVideo = document.getElementById('remoteStream');
+        //   remoteStreamVideo.srcObject = event.streams[0];
+        // };
+
+        // /**
+        //  * SOCKET.IO
+        //  */
+        // socket.on('connect', () => {
+        //   console.log(`[socket.io]: connected ${socket.id}.`);
+
+        //   socket.emit('join', room);
+
+        //   socket.on('signal', (payload) => {
+        //     peers = payload.peers;
+        //     // if (peers.length > 0) {
+        //     //   peers.forEach(setupClient);
+        //     // }
+        //     console.log(`Current peers count ${peers.length}`);
+        //   });
+
+        //   socket.on('offer.get', async ({ offer }) => {
+        //     console.log('get offer', offer);
+        //     pc.setRemoteDescription(new RTCSessionDescription(offer));
+        //     pc.createAnswer().then((answer) => {
+        //       pc.setLocalDescription(answer);
+        //       socket.emit('answer.send', { room, answer });
+        //     });
+        //   });
+
+        //   socket.on('answer.get', ({ answer }) => {
+        //     console.log('get answer', answer);
+        //     pc.setRemoteDescription(new RTCSessionDescription(answer));
+        //   });
+
+        //   socket.on('candidate.get', ({ candidate }) => {
+        //     console.log('get candidate', candidate);
+        //     pc.addIceCandidate(new RTCIceCandidate(candidate));
+        //   });
+        // });
+
+        // /**
+        //  * START CALL
+        //  */
+        // async function setupClient() {
+        //   pc.createOffer().then((offer) => {
+        //     pc.setLocalDescription(offer);
+        //     socket.emit('offer.send', { room, offer });
+        //   });
+        // };
+      });
+
+
+      function gotMessageFromServer(fromId, message, socket) {
+        //Parse the incoming signal
+        const signal = message;
+
+        console.log(message);
+
+        //Make sure it's not coming from yourself
+        if(fromId != socketId) {
+
+          if(signal.sdp) {            
+            connections[fromId].setRemoteDescription(new RTCSessionDescription(signal.sdp))
+              .then(() => {                
+                if(signal.sdp.type == 'offer') {
+                  connections[fromId].createAnswer().then((description) => {
+                    connections[fromId].setLocalDescription(description).then(() => {
+                      socket.emit('signal', fromId, { 'sdp': connections[fromId].localDescription });
+                    }).catch(e => console.log(e));        
+                  }).catch(e => console.log(e));
+                }
+              }).catch(e => console.log(e));
+          }
+
+          if(signal.ice) {
+            connections[fromId].addIceCandidate(new RTCIceCandidate(signal.ice))
+              .catch(e => console.log(e));
+          }                
+        }
+      };
+    
+      function getUserMedia(stream) {
+        localStream = stream;
+        // stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+        localVideo.srcObject = stream;
+      };
+
+      function gotRemoteStream(event, id) {
+        const videos = document.querySelectorAll('video');
+        const video  = document.createElement('video');
+        const div    = document.createElement('div');
+
+        video.setAttribute('data-socket', id);
+        video.srcObject   = event.streams[0];
+        video.autoplay    = true; 
+        video.muted       = true;
+        video.playsinline = true;
+        video.width       = '160';
+        video.height      = '120';
+
+        div.appendChild(video);      
+        document.querySelector('.videos').appendChild(div);      
+      };
+    };
+  </script>
+</body>
+</html>
