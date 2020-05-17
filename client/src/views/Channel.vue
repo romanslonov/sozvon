@@ -27,6 +27,7 @@
 
 <script>
 import VVideo from '@/components/Video.vue';
+import { SIGNAL_SERVER_URL } from '@/config';
 import io from 'socket.io-client';
 
 const peerConnectionConfig = {
@@ -56,7 +57,7 @@ export default {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       this.localStream = stream;
 
-      this.socket = io('http://localhost:3000');
+      this.socket = io(SIGNAL_SERVER_URL);
 
       this.socket.on('connect', () => {
         this.sid = this.socket.id;
@@ -161,6 +162,9 @@ export default {
   beforeDestroy() {
     this.socket.close();
     this.socket = null;
+    this.localStream.getTracks().forEach((track) => {
+      track.stop();
+    });
   },
   components: { VVideo },
 };

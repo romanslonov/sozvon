@@ -27,7 +27,7 @@ async function connectStreamToVideoElement(stream, video) {
     } else {
       video.src = window.URL.createObjectURL(stream); // for older browsers
     }
-    video.onloadedmetadata = function () {
+    video.onloadedmetadata = () => {
       video.play();
     };
     // setInterval(async () => {

@@ -2,7 +2,8 @@
   <div class="min-h-screen flex items-center justify-center">
     <form @submit.prevent="handleSubmit" class="flex items-center">
       <input
-        class="text-2xl border-2 rounded h-16 px-4 focus:outline-none mr-4"
+        required
+        class="text-2xl border-2 rounded h-16 px-4 focus:border-purple-600 focus:outline-none mr-4"
         type="text"
         v-model="form.hash"
         placeholder="Room name"
