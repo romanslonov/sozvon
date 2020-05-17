@@ -1,18 +1,18 @@
 <template>
-  <div class="peer item">
-    <video
-      class="video"
-      ref="video"
-      autoplay
-      playsinline
-      :muted="muted"
-      v-if="stream"
-      width="160"
-      height="120"
-      :class="{'-mirrored': mirrored}"
-    />
-    <div v-else class="video video-placeholder -content-placeholder">
-      <i data-f7-icon="rectangle_stack_person_crop"></i>
+  <div class="stream">
+    <div class="stream__container">
+      <video
+        v-if="stream"
+        class="stream__video"
+        ref="video"
+        autoplay
+        playsinline
+        :muted="muted"
+        :class="{'is-mirrored': mirrored}"
+      />
+      <div class="stream__actions">
+        <button @click="$emit('hangup')" class="h-16 w-16 rounded-full bg-red-600">H</button>
+      </div>
     </div>
   </div>
 </template>
@@ -20,7 +20,7 @@
 <script>
 /* eslint-disable no-param-reassign */
 async function connectStreamToVideoElement(stream, video) {
-  console.log('connectStreamToVideoElement', stream, video);
+  // console.log('connectStreamToVideoElement', stream, video);
   if (stream) {
     if ('srcObject' in video) {
       video.srcObject = stream;
@@ -55,8 +55,9 @@ export default {
       type: Boolean,
       default: false,
     },
-    title: {
-      type: String,
+    local: {
+      type: Boolean,
+      default: false,
     },
     mirrored: {
       type: Boolean,
@@ -68,7 +69,7 @@ export default {
   },
   methods: {
     async doConnectStream(stream) {
-      console.log('doConnectStream', this.title, stream);
+      // console.log('doConnectStream', this.title, stream);
       if (stream) {
         await this.$nextTick();
         await connectStreamToVideoElement(stream, this.$refs.video);
@@ -93,3 +94,38 @@ export default {
   },
 };
 </script>
+
+<style lang="postcss">
+.stream {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.stream__container {
+  position: relative;
+  height: 0;
+  padding-top: 56.25%;
+  background:#202124;
+  width: 480px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.stream__actions {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  width: 100%;
+}
+.stream__video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.stream__video.is-mirrored {
+  transform: matrix(-1, 0, 0, 1, 0, 0);
+}
+</style>
