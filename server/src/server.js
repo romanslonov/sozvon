@@ -1,3 +1,4 @@
+require('dotenv').config();
 const Koa = require('koa');
 const cors = require('@koa/cors');
 const helmet = require('koa-helmet');
@@ -6,10 +7,9 @@ const app = new Koa();
 const server = require('http').createServer(app.callback());
 const io = require('socket.io')(server);
 
-
 const config = {
   port: 3000,
-  host: 'localhost',
+  host: process.env.HOST || 'localhost',
   max: 50,
 };
 
