@@ -14,6 +14,7 @@
         :stream="localStream"
         @hangup="handleHangup"
       />
+
     </div>
     <div class="flex py-4">
       <v-video
@@ -27,12 +28,9 @@
 
 <script>
 import VVideo from '@/components/Video.vue';
-import { SIGNAL_SERVER_URL } from '@/config';
+import { SIGNAL_SERVER_URL, PEER_CONFIG } from '@/config';
 import io from 'socket.io-client';
 
-const peerConnectionConfig = {
-  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-};
 const constraints = {
   video: true,
   audio: true,
@@ -113,7 +111,7 @@ export default {
       }
     },
     setupPeer(sid, initCall = false) {
-      const connection = { id: sid, pc: new RTCPeerConnection(peerConnectionConfig) };
+      const connection = { id: sid, pc: new RTCPeerConnection(PEER_CONFIG) };
       connection.pc.onicecandidate = (event) => this.gotIceCandidate(event, sid);
       connection.pc.ontrack = (event) => this.gotRemoteStream(event, sid);
       this.localStream

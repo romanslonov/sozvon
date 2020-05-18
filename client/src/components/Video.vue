@@ -11,7 +11,20 @@
         :class="{'is-mirrored': mirrored}"
       />
       <div class="stream__actions">
-        <button @click="$emit('hangup')" class="h-16 w-16 rounded-full bg-red-600">H</button>
+        <button
+          @click="toggleTrack(stream, 'audio')"
+          class="h-16 w-16 rounded-full bg-red-600"
+        >
+          A
+        </button>
+        <button @click="toggleTrack(stream, 'video')" class="h-16 w-16 rounded-full bg-red-600">
+          V
+        </button>
+        <button
+          v-if="local"
+          @click="$emit('hangup')"
+          class="h-16 w-16 rounded-full bg-red-600"
+        >H</button>
       </div>
     </div>
   </div>
@@ -68,6 +81,13 @@ export default {
     return {};
   },
   methods: {
+    toggleTrack(stream, type) {
+      stream.getTracks().forEach((track) => {
+        if (track.kind === type) {
+          track.enabled = !track.enabled;
+        }
+      });
+    },
     async doConnectStream(stream) {
       // console.log('doConnectStream', this.title, stream);
       if (stream) {

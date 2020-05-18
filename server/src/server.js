@@ -2,7 +2,6 @@ require('dotenv').config();
 const Koa = require('koa');
 const cors = require('@koa/cors');
 const helmet = require('koa-helmet');
-const static = require('koa-static');
 const app = new Koa();
 const server = require('http').createServer(app.callback());
 const io = require('socket.io')(server);
@@ -15,9 +14,6 @@ const config = {
 
 app.use(helmet());
 app.use(cors());
-app.use(static(__dirname + '/' + 'public'));
-
-// SOCKET.IO
 
 io.on('connection', (socket) => {
   const sid = socket.id
@@ -27,9 +23,7 @@ io.on('connection', (socket) => {
 
   socket.on('join', ({ room }) => {
     currentRoom = room;
-
     socket.join(room);
-    
     socket.to(room).emit('joined', {sid});
 
   });
@@ -43,9 +37,8 @@ io.on('connection', (socket) => {
     socket.to(currentRoom).emit('leave', {sid});
     console.log('leave ', sid);
   });
-
 });
 
 server.listen(config.port, config.host, () => {
-  console.log(`Server up and running on: http://${config.host}:${config.port}`);
+  console.log(`Server up and running on: ${config.host}:${config.port}`);
 });
