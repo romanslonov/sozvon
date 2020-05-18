@@ -76,7 +76,7 @@ export default {
       this.peers = this.peers.filter((c) => c.id !== sid);
       this.streams = this.streams.filter((s) => s.id !== sid);
       if (this.peers.length === 0) {
-        this.timer.reset();
+        this.timer.stop();
       }
     },
     async handleIncomingPeer({ sid }) {
