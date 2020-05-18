@@ -1,27 +1,30 @@
 <template>
-  <div class="min-h-screen flex flex-col">
-    <div class="flex flex-col bg-gray-200 border-b py-8">
+  <div class="min-h-screen flex flex-col items-center justify-center">
+    <div class="p-8">
+      <div class="flex">
+        <v-video
+          muted
+          local
+          mirrored
+          v-if="localStream"
+          :stream="localStream"
+          @hangup="handleHangup"
+        />
 
-      <div class="flex flex-col items-center">
-        <div>Channel <span class="font-bold">{{ $route.params.id }}</span></div>
+        <!-- <div class="flex flex-col w-56 border-2 rounded p-2 ml-4">
+          <div class="flex-grow"></div>
+          <textarea class="border rounded w-full" id=""></textarea>
+        </div> -->
       </div>
-
-      <v-video
-        muted
-        local
-        mirrored
-        v-if="localStream"
-        :stream="localStream"
-        @hangup="handleHangup"
-      />
-
-    </div>
-    <div class="flex py-4">
-      <v-video
-        v-for="(stream, i) in streams"
-        :key="i"
-        :stream="stream.src"
-      />
+      <div class="flex pt-4">
+        <v-video
+          class="m-0"
+          v-for="(stream, i) in streams"
+          :key="i"
+          :stream="stream.src"
+          width="148"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -32,7 +35,7 @@ import { SIGNAL_SERVER_URL, PEER_CONFIG } from '@/config';
 import io from 'socket.io-client';
 
 const constraints = {
-  video: true,
+  video: false,
   audio: true,
 };
 
@@ -113,6 +116,7 @@ export default {
     setupPeer(sid, initCall = false) {
       const connection = { id: sid, pc: new RTCPeerConnection(PEER_CONFIG) };
       connection.pc.onicecandidate = (event) => this.gotIceCandidate(event, sid);
+      connection.pc.oniceconnectionstatechange = (event) => this.checkPeerDisconnect(event, sid);
       connection.pc.ontrack = (event) => this.gotRemoteStream(event, sid);
       this.localStream
         .getTracks()
@@ -148,6 +152,16 @@ export default {
           from: this.sid,
           ice: event.candidate,
         });
+      }
+    },
+    checkPeerDisconnect(event, sid) {
+      const peer = this.getPeer(sid);
+
+      if (!peer) return;
+
+      const state = peer.pc.iceConnectionState;
+      if (state === 'failed' || state === 'closed' || state === 'disconnected') {
+        this.handleLeavePeer({ sid });
       }
     },
     getPeer(sid) {

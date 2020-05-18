@@ -1,6 +1,15 @@
 <template>
   <div class="stream">
-    <div class="stream__container">
+    <div class="stream__container" :style="{ width: `${width}px` }">
+      <div
+        v-if="local"
+        class="absolute bg-white rounded font-bold text-xs px-2" style="top:12px;left:12px;"
+      >
+        {{ timer }}
+      </div>
+      <div class="text-center centered">
+        <v-mic-icon :width="local ? '72' : '32'" :height="local ? '72' : '32'" class="text-white" />
+      </div>
       <video
         v-if="stream"
         class="stream__video"
@@ -10,27 +19,39 @@
         :muted="muted"
         :class="{'is-mirrored': mirrored}"
       />
-      <div class="stream__actions">
+      <div
+        v-if="local"
+        class="flex items-start justify-center absolute left-0 bottom-0 right-0 p-4 space-x-4"
+      >
         <button
           @click="toggleTrack(stream, 'audio')"
-          class="h-16 w-16 rounded-full bg-red-600"
+          class="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow"
         >
-          A
-        </button>
-        <button @click="toggleTrack(stream, 'video')" class="h-16 w-16 rounded-full bg-red-600">
-          V
+          <v-mic-icon width="24" height="24" class="text-black" />
         </button>
         <button
-          v-if="local"
+          disabled
+          @click="toggleTrack(stream, 'video')"
+          class="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow opacity-50"
+        >
+          <v-videocam-off-icon width="24" height="24" class="text-black" />
+        </button>
+        <button
           @click="$emit('hangup')"
-          class="h-16 w-16 rounded-full bg-red-600"
-        >H</button>
+          class="flex items-center justify-center h-12 w-12 rounded-full bg-red-600 shadow"
+        >
+          <v-call-end-icon width="24" height="24" class="text-white" />
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import VMicIcon from '@/components/icons/Mic.vue';
+import VVideocamOffIcon from '@/components/icons/VideocamOff.vue';
+import VCallEndIcon from '@/components/icons/CallEnd.vue';
+
 /* eslint-disable no-param-reassign */
 async function connectStreamToVideoElement(stream, video) {
   // console.log('connectStreamToVideoElement', stream, video);
@@ -76,9 +97,15 @@ export default {
       type: Boolean,
       default: false,
     },
+    width: {
+      type: String,
+      default: '640',
+    },
   },
   data() {
-    return {};
+    return {
+      timer: '00:00',
+    };
   },
   methods: {
     toggleTrack(stream, type) {
@@ -112,6 +139,9 @@ export default {
       this.doConnectStream(value);
     },
   },
+  components: {
+    VMicIcon, VVideocamOffIcon, VCallEndIcon,
+  },
 };
 </script>
 
@@ -125,7 +155,7 @@ export default {
   height: 0;
   padding-top: 56.25%;
   background:#202124;
-  width: 480px;
+  /* width: 640px; */
   overflow: hidden;
   border-radius: 8px;
 }
@@ -147,5 +177,11 @@ export default {
 }
 .stream__video.is-mirrored {
   transform: matrix(-1, 0, 0, 1, 0, 0);
+}
+.centered {
+  @apply absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 </style>
