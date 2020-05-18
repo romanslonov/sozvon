@@ -9,7 +9,7 @@
             text-2xl border-2 rounded h-16 px-6 focus:border-blue-600 focus:outline-none mr-4
           "
           type="text"
-          v-model="form.hash"
+          v-model="form.id"
           placeholder="unique id"
         />
         <button class="bg-blue-600 rounded text-white h-16 px-12 text-xl" type="submit">
@@ -21,19 +21,23 @@
 </template>
 
 <script>
+import { nanoid } from 'nanoid';
 
 export default {
   name: 'Home',
   data: () => ({
     form: {
-      hash: '',
+      id: '',
     },
   }),
+  created() {
+    this.form.id = nanoid(5);
+  },
   methods: {
     handleSubmit() {
       this.$router.push({
         name: 'Channel',
-        params: { id: this.form.hash, initiator: true },
+        params: { id: this.form.id, initiator: true },
       });
     },
   },

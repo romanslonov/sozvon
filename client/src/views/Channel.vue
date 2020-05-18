@@ -1,11 +1,9 @@
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center">
     <div class="p-8">
-      <div class="flex">
+      <div>
         <v-video
-          muted
           local
-          mirrored
           v-if="localStream"
           :stream="localStream"
           @hangup="handleHangup"
@@ -33,6 +31,7 @@
 import VVideo from '@/components/Video.vue';
 import { SIGNAL_SERVER_URL, PEER_CONFIG } from '@/config';
 import io from 'socket.io-client';
+import Timer from 'easytimer.js';
 
 const constraints = {
   video: false,
@@ -44,12 +43,16 @@ export default {
   data: () => ({
     sid: null,
     socket: null,
+    meter: null,
     localStream: null,
+    rafID: null,
     peers: [],
     streams: [],
+    timer: null,
   }),
   async created() {
     if (!this.socket) {
+      this.timer = new Timer();
       this.init();
     }
   },
@@ -72,11 +75,18 @@ export default {
     handleLeavePeer({ sid }) {
       this.peers = this.peers.filter((c) => c.id !== sid);
       this.streams = this.streams.filter((s) => s.id !== sid);
+      if (this.peers.length === 0) {
+        this.timer.reset();
+      }
     },
     async handleIncomingPeer({ sid }) {
       if (this.getPeer(sid)) return;
       const peer = this.setupPeer(sid, true);
       this.peers.push(peer);
+
+      if (this.peers.length > 0) {
+        this.timer.start();
+      }
     },
     async handleSignalResponse(signal) {
       if (!this.getPeer(signal.from)) {
@@ -99,6 +109,7 @@ export default {
                         from: this.sid,
                         sdp: remotePeer.pc.localDescription,
                       });
+                      this.timer.start();
                     });
                 });
             });
@@ -142,6 +153,7 @@ export default {
       if (this.streams.some((s) => s.id === sid)) return;
       this.streams.push({
         id: sid,
+        muted: false,
         src: event.streams[0],
       });
     },

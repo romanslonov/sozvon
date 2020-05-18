@@ -1,14 +1,44 @@
 <template>
   <div class="stream">
-    <div class="stream__container" :style="{ width: `${width}px` }">
+    <div
+      class="stream__container"
+      :class="[local ? 'rounded-lg' : 'rounded']"
+      :style="{ width: `${width}px` }"
+    >
       <div
         v-if="local"
-        class="absolute bg-white rounded font-bold text-xs px-2" style="top:12px;left:12px;"
+        class="absolute bg-white rounded font-bold text-xs px-2" style="top:16px;left:16px;"
       >
-        {{ timer }}
+        {{ $parent.timer ? $parent.timer.getTimeValues().toString() : '00:00:00' }}
       </div>
       <div class="text-center centered">
-        <v-mic-icon :width="local ? '72' : '32'" :height="local ? '72' : '32'" class="text-white" />
+        <v-mic-muted-icon
+          v-if="muted"
+          :width="local ? '72' : '32'"
+          :height="local ? '72' : '32'"
+          class="text-white"
+        />
+        <v-mic-icon
+          v-else
+          :width="local ? '72' : '32'"
+          :height="local ? '72' : '32'"
+          class="text-white"
+        />
+      </div>
+      <div
+        v-if="local"
+        class="absolute"
+        style="top: 104px; right: 16px;"
+      >
+        <div
+          class="relative h-40 w-1 rounded-full overflow-hidden"
+          style="background-color:rgba(255,255,255,0.3);"
+        >
+          <div
+            class="absolute left-0 top-0 bottom-0 right-0 top-0 bg-white"
+            :style="{ transform: `translateY(${100 - volume}%)` }">
+          </div>
+        </div>
       </div>
       <video
         v-if="stream"
@@ -16,8 +46,8 @@
         ref="video"
         autoplay
         playsinline
-        :muted="muted"
-        :class="{'is-mirrored': mirrored}"
+        :muted="local"
+        :class="{'is-mirrored': local}"
       />
       <div
         v-if="local"
@@ -27,7 +57,8 @@
           @click="toggleTrack(stream, 'audio')"
           class="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow"
         >
-          <v-mic-icon width="24" height="24" class="text-black" />
+          <v-mic-muted-icon v-if="muted" width="24" height="24" class="text-black -mb-1" />
+          <v-mic-icon v-else width="24" height="24" class="text-black -mb-1" />
         </button>
         <button
           disabled
@@ -49,8 +80,10 @@
 
 <script>
 import VMicIcon from '@/components/icons/Mic.vue';
+import VMicMutedIcon from '@/components/icons/MicMuted.vue';
 import VVideocamOffIcon from '@/components/icons/VideocamOff.vue';
 import VCallEndIcon from '@/components/icons/CallEnd.vue';
+import createAudioMeter from '@/audioMeter';
 
 /* eslint-disable no-param-reassign */
 async function connectStreamToVideoElement(stream, video) {
@@ -64,18 +97,10 @@ async function connectStreamToVideoElement(stream, video) {
     video.onloadedmetadata = () => {
       video.play();
     };
-    // setInterval(async () => {
-    //   try {
-    //     let result = await video.play()
-    //     log('play ok', result)
-    //   } catch (err) {
-    //     log('play error', err)
-    //   }
-    // }, 1000)
   }
 }
 export default {
-  name: 'app-video',
+  name: 'Video',
   props: {
     stream: {
       type: [MediaStream, Object],
@@ -85,15 +110,7 @@ export default {
       type: Boolean,
       default: false,
     },
-    muted: {
-      type: Boolean,
-      default: false,
-    },
     local: {
-      type: Boolean,
-      default: false,
-    },
-    mirrored: {
       type: Boolean,
       default: false,
     },
@@ -104,7 +121,10 @@ export default {
   },
   data() {
     return {
-      timer: '00:00',
+      volume: 0,
+      localVolume: 0,
+      audioMeter: null,
+      muted: false,
     };
   },
   methods: {
@@ -113,26 +133,40 @@ export default {
         if (track.kind === type) {
           track.enabled = !track.enabled;
         }
+        if (type === 'audio') {
+          this.muted = !this.muted;
+        }
       });
     },
     async doConnectStream(stream) {
-      // console.log('doConnectStream', this.title, stream);
       if (stream) {
         await this.$nextTick();
         await connectStreamToVideoElement(stream, this.$refs.video);
-        // stream.onaddtrack = async () =>
-        // await connectStreamToVideoElement(stream, this.$refs.video)
-        // stream.onremovetrack = async () =>
-        // await connectStreamToVideoElement(stream, this.$refs.video)
+        this.initAudioMeter(stream);
       }
+    },
+    initAudioMeter(stream) {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+      const mediaStreamSource = audioContext.createMediaStreamSource(stream);
+      this.audioMeter = createAudioMeter(audioContext);
+
+      mediaStreamSource.connect(this.audioMeter);
+
+      this.drawLoop();
+    },
+    drawLoop() {
+      this.volume = this.audioMeter.volume * 100 * 1.4;
+
+      // set up the next visual callback
+      this.rafID = window.requestAnimationFrame(this.drawLoop);
     },
   },
   async mounted() {
-    // webrtc.on('stream', async () => {
-    //   await this.$nextTick()
-    //   await this.doConnectStream(this.stream)
-    // })
     await this.doConnectStream(this.stream);
+  },
+  beforeDestroy() {
+    this.audioMeter.shutdown();
   },
   watch: {
     stream(value) {
@@ -140,7 +174,7 @@ export default {
     },
   },
   components: {
-    VMicIcon, VVideocamOffIcon, VCallEndIcon,
+    VMicIcon, VVideocamOffIcon, VCallEndIcon, VMicMutedIcon,
   },
 };
 </script>
@@ -157,7 +191,6 @@ export default {
   background:#202124;
   /* width: 640px; */
   overflow: hidden;
-  border-radius: 8px;
 }
 .stream__actions {
   position: absolute;
