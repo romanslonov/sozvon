@@ -1,6 +1,7 @@
 <template>
   <div class="min-h-screen flex items-center justify-center">
     <div class="flex flex-col items-center">
+      <v-logo width="80" height="80" />
       <h1 class="text-5xl font-bold mb-8">Join a room to start talking</h1>
       <form @submit.prevent="handleSubmit" class="flex items-center mx-auto">
         <input
@@ -29,6 +30,7 @@
 </template>
 
 <script>
+import VLogo from '@/components/icons/Logo.vue';
 import { nanoid } from 'nanoid';
 
 export default {
@@ -49,6 +51,6 @@ export default {
       });
     },
   },
-  components: {},
+  components: { VLogo },
 };
 </script>
