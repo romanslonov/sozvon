@@ -1,12 +1,20 @@
 <template>
   <div class="min-h-screen flex items-center justify-center">
     <div class="flex flex-col items-center">
-      <h1 class="text-5xl font-bold mb-8">Join a room and start talking</h1>
+      <h1 class="text-5xl font-bold mb-8">Join a room to start talking</h1>
       <form @submit.prevent="handleSubmit" class="flex items-center mx-auto">
         <input
           required
           class="
-            text-2xl border-2 rounded h-16 px-6 focus:border-blue-600 focus:outline-none mr-4
+            text-2xl
+            border-2
+            rounded
+            h-16
+            px-6
+            focus:border-blue-600
+            focus:outline-none
+            focus:shadow
+            mr-4
           "
           type="text"
           v-model="form.id"

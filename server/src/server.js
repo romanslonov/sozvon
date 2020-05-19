@@ -30,6 +30,10 @@ io.on('connection', (socket) => {
 
   socket.on('signal', (data) => {
     io.to(data.to).emit('signal', data);
+  });
+
+  socket.on('action', (data) => {
+    socket.to(data.room).emit('action', data);
   })
 
   socket.on('disconnect', () => {

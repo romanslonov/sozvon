@@ -7,6 +7,7 @@
           v-if="localStream"
           :stream="localStream"
           @hangup="handleHangup"
+          @mute="handleMute"
         />
 
         <!-- <div class="flex flex-col w-56 border-2 rounded p-2 ml-4">
@@ -20,6 +21,7 @@
           v-for="(stream, i) in streams"
           :key="i"
           :stream="stream.src"
+          :muted="stream.muted"
           width="148"
         />
       </div>
@@ -69,6 +71,7 @@ export default {
         this.socket.emit('join', { room: this.$route.params.id });
         this.socket.on('joined', this.handleIncomingPeer);
         this.socket.on('signal', this.handleSignalResponse);
+        this.socket.on('action', this.handlePeerAction);
         this.socket.on('leave', this.handleLeavePeer);
       });
     },
@@ -181,6 +184,26 @@ export default {
     },
     handleHangup() {
       this.$router.push({ name: 'Home' }).catch(() => {});
+    },
+    handleMute(value) {
+      this.socket.emit('action', {
+        type: 'mute',
+        muted: value,
+        id: this.sid,
+        room: this.$route.params.id,
+      });
+    },
+    handlePeerAction(data) {
+      if (data.type === 'mute') {
+        this.streams = this.streams.map((stream) => {
+          if (stream.id === data.id) {
+            const s = { ...stream };
+            s.muted = data.muted;
+            return s;
+          }
+          return stream;
+        });
+      }
     },
   },
   beforeDestroy() {

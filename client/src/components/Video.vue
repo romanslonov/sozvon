@@ -13,7 +13,7 @@
       </div>
       <div class="text-center centered">
         <v-mic-muted-icon
-          v-if="muted"
+          v-if="localMuted || muted"
           :width="local ? '72' : '32'"
           :height="local ? '72' : '32'"
           class="text-white"
@@ -57,7 +57,7 @@
           @click="toggleTrack(stream, 'audio')"
           class="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow"
         >
-          <v-mic-muted-icon v-if="muted" width="24" height="24" class="text-black -mb-1" />
+          <v-mic-muted-icon v-if="localMuted" width="24" height="24" class="text-black -mb-1" />
           <v-mic-icon v-else width="24" height="24" class="text-black -mb-1" />
         </button>
         <button
@@ -114,6 +114,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    muted: {
+      type: Boolean,
+      default: false,
+    },
     width: {
       type: String,
       default: '640',
@@ -124,7 +128,7 @@ export default {
       volume: 0,
       localVolume: 0,
       audioMeter: null,
-      muted: false,
+      localMuted: false,
     };
   },
   methods: {
@@ -134,7 +138,8 @@ export default {
           track.enabled = !track.enabled;
         }
         if (type === 'audio') {
-          this.muted = !this.muted;
+          this.localMuted = !this.localMuted;
+          this.$emit('mute', this.localMuted);
         }
       });
     },
