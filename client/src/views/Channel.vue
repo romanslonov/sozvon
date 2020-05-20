@@ -34,7 +34,7 @@ import Timer from 'easytimer.js';
 import SimplePeer from 'simple-peer';
 
 const constraints = {
-  video: false,
+  video: true,
   audio: true,
 };
 
