@@ -28,13 +28,13 @@
 
 <script>
 import VVideo from '@/components/Video.vue';
-import { SIGNAL_SERVER_URL } from '@/config';
+import { SIGNAL_SERVER_URL, ICE_CONFIG } from '@/config';
 import io from 'socket.io-client';
 import Timer from 'easytimer.js';
 import SimplePeer from 'simple-peer';
 
 const constraints = {
-  video: true,
+  video: false,
   audio: true,
 };
 
@@ -78,63 +78,61 @@ export default {
       });
     },
     handleIncomingPeer({ sid }) {
-      console.log('New peer connected! ', sid);
       if (this.getPeer(sid)) return;
 
-      const peer = new SimplePeer({ trickle: true, initiator: true, stream: this.localStream });
+      const peer = this.setupPeer(sid, true);
 
       this.peers.push({
         id: sid,
         pc: peer,
       });
+    },
+    async handleSignalResponse(signal) {
+      if (signal.type === 'offer') {
+        if (!this.getPeer(signal.from)) {
+          const peer = this.setupPeer(signal.from, false, signal.data);
+
+          this.peers.push({ id: signal.from, pc: peer });
+        }
+      }
+
+      if (signal.type === 'answer') {
+        const peer = this.getPeer(signal.from);
+        if (peer) {
+          peer.pc.signal(signal.data);
+        }
+      }
+    },
+    handleLeavePeer({ sid }) {
+      this.peers = this.peers.filter((c) => c.id !== sid);
+      this.streams = this.streams.filter((s) => s.id !== sid);
+    },
+    setupPeer(sid, initiator, signal) {
+      const peer = new SimplePeer({
+        trickle: true,
+        initiator,
+        stream: this.localStream,
+        config: ICE_CONFIG,
+      });
+
+      if (!initiator) {
+        peer.signal(signal);
+      }
 
       peer.on('signal', (data) => {
         this.socket.emit('signal', {
-          type: 'offer',
+          type: initiator ? 'offer' : 'answer',
           to: sid,
           from: this.sid,
           data,
         });
       });
 
-      peer.on('stream', (stream) => this.gotStream(stream, sid));
-    },
-    async handleSignalResponse(signal) {
-      if (signal.type === 'offer') {
-        if (!this.getPeer(signal.from)) {
-          console.log('should init new peer');
-          const peer = new SimplePeer({
-            trickle: true,
-            initiator: false,
-            stream: this.localStream,
-          });
-          peer.signal(signal.data);
-          this.peers.push({ id: signal.from, pc: peer });
-          peer.on('signal', (data) => {
-            console.log('Got offer');
-            console.log('Set offer');
-            this.socket.emit('signal', {
-              type: 'answer',
-              to: signal.from,
-              from: this.sid,
-              data,
-            });
-            console.log('Sent answer');
-          });
-          peer.on('stream', (stream) => this.gotStream(stream, signal.from));
-        }
-      }
+      peer.on('stream', (stream) => {
+        this.gotStream(stream, sid);
+      });
 
-      if (signal.type === 'answer') {
-        console.log('Got answer');
-        const peer = this.getPeer(signal.from);
-        peer.pc.signal(signal.data);
-        console.log('Set answer');
-      }
-    },
-    handleLeavePeer({ sid }) {
-      this.peers = this.peers.filter((c) => c.id !== sid);
-      this.streams = this.streams.filter((s) => s.id !== sid);
+      return peer;
     },
     gotStream(stream, sid) {
       this.streams.push({ id: sid, src: stream });
