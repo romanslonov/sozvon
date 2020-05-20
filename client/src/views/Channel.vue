@@ -6,8 +6,6 @@
           local
           v-if="localStream"
           :stream="localStream"
-          @hangup="handleHangup"
-          @mute="handleMute"
         />
 
         <!-- <div class="flex flex-col w-56 border-2 rounded p-2 ml-4">
@@ -21,7 +19,6 @@
           v-for="(stream, i) in streams"
           :key="i"
           :stream="stream.src"
-          :muted="stream.muted"
           width="148"
         />
       </div>
@@ -31,9 +28,10 @@
 
 <script>
 import VVideo from '@/components/Video.vue';
-import { SIGNAL_SERVER_URL, PEER_CONFIG } from '@/config';
+import { SIGNAL_SERVER_URL } from '@/config';
 import io from 'socket.io-client';
 import Timer from 'easytimer.js';
+import SimplePeer from 'simple-peer';
 
 const constraints = {
   video: false,
@@ -43,20 +41,24 @@ const constraints = {
 export default {
   name: 'Channel',
   data: () => ({
-    sid: null,
-    socket: null,
-    meter: null,
+    timer: null,
     localStream: null,
-    rafID: null,
+
     peers: [],
     streams: [],
-    timer: null,
   }),
-  async created() {
+  created() {
     if (!this.socket) {
       this.timer = new Timer();
       this.init();
     }
+  },
+  beforeDestroy() {
+    this.socket.close();
+    this.socket = null;
+    this.localStream.getTracks().forEach((track) => {
+      track.stop();
+    });
   },
   methods: {
     async init() {
@@ -71,148 +73,247 @@ export default {
         this.socket.emit('join', { room: this.$route.params.id });
         this.socket.on('joined', this.handleIncomingPeer);
         this.socket.on('signal', this.handleSignalResponse);
-        this.socket.on('action', this.handlePeerAction);
+        // this.socket.on('action', this.handlePeerAction);
         this.socket.on('leave', this.handleLeavePeer);
       });
+    },
+    handleIncomingPeer({ sid }) {
+      console.log('New peer connected! ', sid);
+      if (this.getPeer(sid)) return;
+
+      const peer = new SimplePeer({ trickle: true, initiator: true, stream: this.localStream });
+
+      this.peers.push({
+        id: sid,
+        pc: peer,
+      });
+
+      peer.on('signal', (data) => {
+        this.socket.emit('signal', {
+          type: 'offer',
+          to: sid,
+          from: this.sid,
+          data,
+        });
+      });
+
+      peer.on('stream', (stream) => this.gotStream(stream, sid));
+    },
+    async handleSignalResponse(signal) {
+      if (signal.type === 'offer') {
+        if (!this.getPeer(signal.from)) {
+          console.log('should init new peer');
+          const peer = new SimplePeer({
+            trickle: true,
+            initiator: false,
+            stream: this.localStream,
+          });
+          peer.signal(signal.data);
+          this.peers.push({ id: signal.from, pc: peer });
+          peer.on('signal', (data) => {
+            console.log('Got offer');
+            console.log('Set offer');
+            this.socket.emit('signal', {
+              type: 'answer',
+              to: signal.from,
+              from: this.sid,
+              data,
+            });
+            console.log('Sent answer');
+          });
+          peer.on('stream', (stream) => this.gotStream(stream, signal.from));
+        }
+      }
+
+      if (signal.type === 'answer') {
+        console.log('Got answer');
+        const peer = this.getPeer(signal.from);
+        peer.pc.signal(signal.data);
+        console.log('Set answer');
+      }
     },
     handleLeavePeer({ sid }) {
       this.peers = this.peers.filter((c) => c.id !== sid);
       this.streams = this.streams.filter((s) => s.id !== sid);
-      if (this.peers.length === 0) {
-        this.timer.stop();
-      }
     },
-    async handleIncomingPeer({ sid }) {
-      if (this.getPeer(sid)) return;
-      const peer = this.setupPeer(sid, true);
-      this.peers.push(peer);
-
-      if (this.peers.length > 0) {
-        this.timer.start();
-      }
-    },
-    async handleSignalResponse(signal) {
-      if (!this.getPeer(signal.from)) {
-        const peer = this.setupPeer(signal.from);
-        this.peers.push(peer);
-      }
-
-      const remotePeer = this.getPeer(signal.from);
-
-      if (signal.sdp) {
-        if (signal.sdp.type === 'offer') {
-          remotePeer.pc.setRemoteDescription(signal.sdp)
-            .then(() => {
-              remotePeer.pc.createAnswer()
-                .then((description) => {
-                  remotePeer.pc.setLocalDescription(description)
-                    .then(() => {
-                      this.socket.emit('signal', {
-                        to: signal.from,
-                        from: this.sid,
-                        sdp: remotePeer.pc.localDescription,
-                      });
-                      this.timer.start();
-                    });
-                });
-            });
-        }
-        if (signal.sdp.type === 'answer') {
-          remotePeer.pc.setRemoteDescription(signal.sdp);
-        }
-      }
-
-      if (signal.ice) {
-        await remotePeer.pc.addIceCandidate(new RTCIceCandidate(signal.ice))
-          .catch((e) => console.error(e));
-      }
-    },
-    setupPeer(sid, initCall = false) {
-      const connection = { id: sid, pc: new RTCPeerConnection(PEER_CONFIG) };
-      connection.pc.onicecandidate = (event) => this.gotIceCandidate(event, sid);
-      connection.pc.oniceconnectionstatechange = (event) => this.checkPeerDisconnect(event, sid);
-      connection.pc.ontrack = (event) => this.gotRemoteStream(event, sid);
-      this.localStream
-        .getTracks()
-        .forEach((track) => connection.pc.addTrack(track, this.localStream));
-
-      if (initCall) {
-        connection.pc.createOffer()
-          .then((description) => {
-            connection.pc.setLocalDescription(description)
-              .then(() => {
-                this.socket.emit('signal', {
-                  to: sid,
-                  from: this.sid,
-                  sdp: connection.pc.localDescription,
-                });
-              });
-          });
-      }
-
-      return connection;
-    },
-    gotRemoteStream(event, sid) {
-      if (this.streams.some((s) => s.id === sid)) return;
-      this.streams.push({
-        id: sid,
-        muted: false,
-        src: event.streams[0],
-      });
-    },
-    gotIceCandidate(event, sid) {
-      if (event.candidate) {
-        this.socket.emit('signal', {
-          to: sid,
-          from: this.sid,
-          ice: event.candidate,
-        });
-      }
-    },
-    checkPeerDisconnect(event, sid) {
-      const peer = this.getPeer(sid);
-
-      if (!peer) return;
-
-      const state = peer.pc.iceConnectionState;
-      if (state === 'failed' || state === 'closed' || state === 'disconnected') {
-        this.handleLeavePeer({ sid });
-      }
+    gotStream(stream, sid) {
+      this.streams.push({ id: sid, src: stream });
     },
     getPeer(sid) {
       return this.peers.find((c) => c.id === sid);
     },
-    handleHangup() {
-      this.$router.push({ name: 'Home' }).catch(() => {});
-    },
-    handleMute(value) {
-      this.socket.emit('action', {
-        type: 'mute',
-        muted: value,
-        id: this.sid,
-        room: this.$route.params.id,
-      });
-    },
-    handlePeerAction(data) {
-      if (data.type === 'mute') {
-        this.streams = this.streams.map((stream) => {
-          if (stream.id === data.id) {
-            const s = { ...stream };
-            s.muted = data.muted;
-            return s;
-          }
-          return stream;
-        });
-      }
-    },
   },
-  beforeDestroy() {
-    this.socket.close();
-    this.socket = null;
-    this.localStream.getTracks().forEach((track) => {
-      track.stop();
-    });
-  },
+  // data: () => ({
+  //   sid: null,
+  //   socket: null,
+  //   meter: null,
+  //   localStream: null,
+  //   rafID: null,
+  //   peers: [],
+  //   streams: [],
+  //   timer: null,
+  // }),
+  // async created() {
+  // if (!this.socket) {
+  //   this.timer = new Timer();
+  //   this.init();
+  // }
+  // },
+  // methods: {
+  //   async init() {
+  //     const stream = await navigator.mediaDevices.getUserMedia(constraints);
+  //     this.localStream = stream;
+
+  //     this.socket = io(SIGNAL_SERVER_URL);
+
+  //     this.socket.on('connect', () => {
+  //       this.sid = this.socket.id;
+
+  //       this.socket.emit('join', { room: this.$route.params.id });
+  //       this.socket.on('joined', this.handleIncomingPeer);
+  //       this.socket.on('signal', this.handleSignalResponse);
+  //       this.socket.on('action', this.handlePeerAction);
+  //       this.socket.on('leave', this.handleLeavePeer);
+  //     });
+  //   },
+  //   handleLeavePeer({ sid }) {
+  //     this.peers = this.peers.filter((c) => c.id !== sid);
+  //     this.streams = this.streams.filter((s) => s.id !== sid);
+  //     if (this.peers.length === 0) {
+  //       this.timer.stop();
+  //     }
+  //   },
+  //   async handleIncomingPeer({ sid }) {
+  //     if (this.getPeer(sid)) return;
+  //     const peer = this.setupPeer(sid, true);
+  //     this.peers.push(peer);
+
+  //     if (this.peers.length > 0) {
+  //       this.timer.start();
+  //     }
+  //   },
+  //   async handleSignalResponse(signal) {
+  //     if (!this.getPeer(signal.from)) {
+  //       const peer = this.setupPeer(signal.from);
+  //       this.peers.push(peer);
+  //     }
+
+  //     const remotePeer = this.getPeer(signal.from);
+
+  //     if (signal.sdp) {
+  //       if (signal.sdp.type === 'offer') {
+  //         remotePeer.pc.setRemoteDescription(signal.sdp)
+  //           .then(() => {
+  //             remotePeer.pc.createAnswer()
+  //               .then((description) => {
+  //                 remotePeer.pc.setLocalDescription(description)
+  //                   .then(() => {
+  //                     this.socket.emit('signal', {
+  //                       to: signal.from,
+  //                       from: this.sid,
+  //                       sdp: remotePeer.pc.localDescription,
+  //                     });
+  //                     this.timer.start();
+  //                   });
+  //               });
+  //           });
+  //       }
+  //       if (signal.sdp.type === 'answer') {
+  //         remotePeer.pc.setRemoteDescription(signal.sdp);
+  //       }
+  //     }
+
+  //     if (signal.ice) {
+  //       await remotePeer.pc.addIceCandidate(new RTCIceCandidate(signal.ice))
+  //         .catch((e) => console.error(e));
+  //     }
+  //   },
+  //   setupPeer(sid, initCall = false) {
+  //     const connection = { id: sid, pc: new RTCPeerConnection(PEER_CONFIG) };
+  //     connection.pc.onicecandidate = (event) => this.gotIceCandidate(event, sid);
+  //     connection.pc.oniceconnectionstatechange = (event) => this.checkPeerDisconnect(event, sid);
+  //     connection.pc.ontrack = (event) => this.gotRemoteStream(event, sid);
+  //     this.localStream
+  //       .getTracks()
+  //       .forEach((track) => connection.pc.addTrack(track, this.localStream));
+
+  //     if (initCall) {
+  //       connection.pc.createOffer()
+  //         .then((description) => {
+  //           connection.pc.setLocalDescription(description)
+  //             .then(() => {
+  //               this.socket.emit('signal', {
+  //                 to: sid,
+  //                 from: this.sid,
+  //                 sdp: connection.pc.localDescription,
+  //               });
+  //             });
+  //         });
+  //     }
+
+  //     return connection;
+  //   },
+  //   gotRemoteStream(event, sid) {
+  //     if (this.streams.some((s) => s.id === sid)) return;
+  //     this.streams.push({
+  //       id: sid,
+  //       muted: false,
+  //       src: event.streams[0],
+  //     });
+  //   },
+  //   gotIceCandidate(event, sid) {
+  //     if (event.candidate) {
+  //       this.socket.emit('signal', {
+  //         to: sid,
+  //         from: this.sid,
+  //         ice: event.candidate,
+  //       });
+  //     }
+  //   },
+  //   checkPeerDisconnect(event, sid) {
+  //     const peer = this.getPeer(sid);
+
+  //     if (!peer) return;
+
+  //     const state = peer.pc.iceConnectionState;
+  //     if (state === 'failed' || state === 'closed' || state === 'disconnected') {
+  //       this.handleLeavePeer({ sid });
+  //     }
+  //   },
+  //   getPeer(sid) {
+  //     return this.peers.find((c) => c.id === sid);
+  //   },
+  //   handleHangup() {
+  //     this.$router.push({ name: 'Home' }).catch(() => {});
+  //   },
+  //   handleMute(value) {
+  //     this.socket.emit('action', {
+  //       type: 'mute',
+  //       muted: value,
+  //       id: this.sid,
+  //       room: this.$route.params.id,
+  //     });
+  //   },
+  //   handlePeerAction(data) {
+  //     if (data.type === 'mute') {
+  //       this.streams = this.streams.map((stream) => {
+  //         if (stream.id === data.id) {
+  //           const s = { ...stream };
+  //           s.muted = data.muted;
+  //           return s;
+  //         }
+  //         return stream;
+  //       });
+  //     }
+  //   },
+  // },
+  // beforeDestroy() {
+  //   this.socket.close();
+  //   this.socket = null;
+  //   this.localStream.getTracks().forEach((track) => {
+  //     track.stop();
+  //   });
+  // },
   components: { VVideo },
 };
 </script>
