@@ -31,7 +31,7 @@
 
 <script>
 import VVideo from '@/components/Video.vue';
-import { SIGNAL_SERVER_URL, PEER_CONFIG } from '@/config';
+import { SIGNAL_SERVER_URL, ICE_CONFIG } from '@/config';
 import io from 'socket.io-client';
 import Timer from 'easytimer.js';
 
@@ -128,7 +128,7 @@ export default {
       }
     },
     setupPeer(sid, initCall = false) {
-      const connection = { id: sid, pc: new RTCPeerConnection(PEER_CONFIG) };
+      const connection = { id: sid, pc: new RTCPeerConnection(ICE_CONFIG) };
       connection.pc.onicecandidate = (event) => this.gotIceCandidate(event, sid);
       connection.pc.oniceconnectionstatechange = (event) => this.checkPeerDisconnect(event, sid);
       connection.pc.ontrack = (event) => this.gotRemoteStream(event, sid);
