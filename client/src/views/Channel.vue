@@ -8,14 +8,10 @@
           :stream="localStream"
           @hangup="handleHangup"
           @mute="handleMute"
+          @upgrade="handleUpgrade"
         />
-
-        <!-- <div class="flex flex-col w-56 border-2 rounded p-2 ml-4">
-          <div class="flex-grow"></div>
-          <textarea class="border rounded w-full" id=""></textarea>
-        </div> -->
       </div>
-      <div class="flex pt-4">
+      <div class="flex pt-4 space-x-4">
         <v-video
           class="m-0"
           v-for="(stream, i) in streams"
@@ -35,11 +31,6 @@ import { SIGNAL_SERVER_URL, ICE_CONFIG } from '@/config';
 import io from 'socket.io-client';
 import Timer from 'easytimer.js';
 
-const constraints = {
-  video: false,
-  audio: true,
-};
-
 export default {
   name: 'Channel',
   data: () => ({
@@ -51,6 +42,10 @@ export default {
     peers: [],
     streams: [],
     timer: null,
+    constraints: {
+      video: false,
+      audio: true,
+    },
   }),
   async created() {
     if (!this.socket) {
@@ -60,7 +55,7 @@ export default {
   },
   methods: {
     async init() {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await navigator.mediaDevices.getUserMedia(this.constraints);
       this.localStream = stream;
 
       this.socket = io(SIGNAL_SERVER_URL);
@@ -153,12 +148,23 @@ export default {
       return connection;
     },
     gotRemoteStream(event, sid) {
-      if (this.streams.some((s) => s.id === sid)) return;
-      this.streams.push({
-        id: sid,
-        muted: false,
-        src: event.streams[0],
-      });
+      if (this.streams.filter((s) => s.id === sid).length === 0) {
+        this.streams.push({
+          id: sid,
+          muted: false,
+          src: event.streams[0],
+        });
+      } else {
+        this.streams = this.streams.map((stream) => {
+          if (stream.id === sid) {
+            const s = { ...stream };
+            // eslint-disable-next-line prefer-destructuring
+            s.src = event.streams[0];
+            return s;
+          }
+          return stream;
+        });
+      }
     },
     gotIceCandidate(event, sid) {
       if (event.candidate) {
@@ -194,6 +200,7 @@ export default {
       });
     },
     handlePeerAction(data) {
+      console.log(data);
       if (data.type === 'mute') {
         this.streams = this.streams.map((stream) => {
           if (stream.id === data.id) {
@@ -205,10 +212,36 @@ export default {
         });
       }
     },
+    async handleUpgrade() {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        ...this.constraints,
+        video: true,
+      });
+      this.localStream = stream;
+
+      this.peers.forEach((peer) => {
+        this.localStream
+          .getTracks()
+          .forEach((track) => peer.pc.addTrack(track, this.localStream));
+        peer.pc.createOffer()
+          .then((description) => {
+            peer.pc.setLocalDescription(description)
+              .then(() => {
+                this.socket.emit('signal', {
+                  to: peer.id,
+                  from: this.sid,
+                  sdp: peer.pc.localDescription,
+                });
+              });
+          });
+      });
+    },
   },
   beforeDestroy() {
-    this.socket.close();
-    this.socket = null;
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
+    }
     this.localStream.getTracks().forEach((track) => {
       track.stop();
     });

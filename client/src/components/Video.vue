@@ -7,13 +7,13 @@
     >
       <div
         v-if="local"
-        class="absolute bg-white rounded font-bold text-xs px-2" style="top:16px;left:16px;"
+        class="absolute z-50 bg-white rounded font-bold text-xs px-2" style="top:16px;left:16px;"
       >
         {{ $parent.timer ? $parent.timer.getTimeValues().toString() : '00:00:00' }}
       </div>
       <div class="text-center centered">
         <v-mic-muted-icon
-          v-if="localMuted || muted"
+          v-if="!audioTrack.enabled || muted"
           :width="local ? '72' : '32'"
           :height="local ? '72' : '32'"
           class="text-white"
@@ -25,9 +25,17 @@
           class="text-white"
         />
       </div>
+      <div v-if="videoTrack && !videoTrack.enabled" class="z-10 text-center text-white centered">
+        <v-videocam-off-icon
+          :width="local ? '72' : '32'"
+          :height="local ? '72' : '32'"
+          class="text-white mx-auto"
+        />
+        You turn off camera
+      </div>
       <div
         v-if="local"
-        class="absolute"
+        class="absolute z-50"
         style="top: 104px; right: 16px;"
       >
         <div
@@ -57,15 +65,30 @@
           @click="toggleTrack(stream, 'audio')"
           class="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow"
         >
-          <v-mic-muted-icon v-if="localMuted" width="24" height="24" class="text-black -mb-1" />
+          <v-mic-muted-icon
+            v-if="!audioTrack.enabled"
+            width="24"
+            height="24"
+            class="text-black -mb-1"
+          />
           <v-mic-icon v-else width="24" height="24" class="text-black -mb-1" />
         </button>
         <button
-          disabled
           @click="toggleTrack(stream, 'video')"
-          class="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow opacity-50"
+          class="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow"
         >
-          <v-videocam-off-icon width="24" height="24" class="text-black" />
+          <v-videocam-off-icon
+            v-if="videoTrack && !videoTrack.enabled"
+            width="24"
+            height="24"
+            class="text-black"
+          />
+          <v-videocam-icon
+            v-else
+            width="24"
+            height="24"
+            class="text-black"
+          />
         </button>
         <button
           @click="$emit('hangup')"
@@ -81,13 +104,13 @@
 <script>
 import VMicIcon from '@/components/icons/Mic.vue';
 import VMicMutedIcon from '@/components/icons/MicMuted.vue';
+import VVideocamIcon from '@/components/icons/Videocam.vue';
 import VVideocamOffIcon from '@/components/icons/VideocamOff.vue';
 import VCallEndIcon from '@/components/icons/CallEnd.vue';
 import createAudioMeter from '@/audioMeter';
 
 /* eslint-disable no-param-reassign */
 async function connectStreamToVideoElement(stream, video) {
-  // console.log('connectStreamToVideoElement', stream, video);
   if (stream) {
     if ('srcObject' in video) {
       video.srcObject = stream;
@@ -128,20 +151,40 @@ export default {
       volume: 0,
       localVolume: 0,
       audioMeter: null,
-      localMuted: false,
     };
+  },
+  computed: {
+    audioTrack() {
+      const tracks = this.stream.getAudioTracks();
+      return tracks.length > 0 ? tracks[0] : null;
+    },
+    videoTrack() {
+      const tracks = this.stream.getVideoTracks();
+      return tracks.length > 0 ? tracks[0] : null;
+    },
   },
   methods: {
     toggleTrack(stream, type) {
-      stream.getTracks().forEach((track) => {
-        if (track.kind === type) {
-          track.enabled = !track.enabled;
+      if (type === 'video') {
+        if (!this.videoTrack) {
+          this.$emit('upgrade');
+        } else {
+          this.videoTrack.enabled = !this.videoTrack.enabled;
         }
-        if (type === 'audio') {
-          this.localMuted = !this.localMuted;
-          this.$emit('mute', this.localMuted);
-        }
-      });
+      }
+      if (type === 'audio') {
+        this.audioTrack.enabled = !this.audioTrack.enabled;
+        this.$emit('mute', !this.audioTrack.enabled);
+      }
+      // stream.getTracks().forEach((track) => {
+      //   if (track.kind === type) {
+      //     track.enabled = !track.enabled;
+      //   }
+      // if (type === 'audio') {
+      //   this.localMuted = !this.localMuted;
+      //   this.$emit('mute', this.localMuted);
+      // }
+      // });
     },
     async doConnectStream(stream) {
       if (stream) {
@@ -179,7 +222,7 @@ export default {
     },
   },
   components: {
-    VMicIcon, VVideocamOffIcon, VCallEndIcon, VMicMutedIcon,
+    VMicIcon, VVideocamOffIcon, VCallEndIcon, VMicMutedIcon, VVideocamIcon,
   },
 };
 </script>
@@ -212,6 +255,7 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 .stream__video.is-mirrored {
   transform: matrix(-1, 0, 0, 1, 0, 0);

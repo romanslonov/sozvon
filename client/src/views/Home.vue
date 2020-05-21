@@ -41,7 +41,7 @@ export default {
     },
   }),
   created() {
-    this.form.id = nanoid(5);
+    this.form.id = process.env.NODE_ENV === 'development' ? 'development' : nanoid(5);
   },
   methods: {
     handleSubmit() {
