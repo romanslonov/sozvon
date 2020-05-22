@@ -34,7 +34,12 @@ io.on('connection', (socket) => {
 
   socket.on('action', (data) => {
     socket.to(data.room).emit('action', data);
-  })
+  });
+
+  socket.on('message', (message) => {
+    console.log(message);
+    socket.to(message.room).emit('message', message);
+  });
 
   socket.on('disconnect', () => {
     socket.leave(currentRoom);

@@ -1,13 +1,13 @@
 <template>
-  <div class="stream">
+  <div
+    class="w-full"
+  >
     <div
-      class="stream__container"
-      :class="[local ? 'rounded-lg' : 'rounded']"
-      :style="{ width: `${width}px` }"
+      :class="[{'stream__container': !local}]"
     >
       <div
         v-if="local"
-        class="absolute z-50 bg-white rounded font-bold text-xs px-2" style="top:16px;left:16px;"
+        class="absolute centered-x z-20 bg-white rounded font-bold text-xs px-2" style="top:16px;"
       >
         {{ $parent.timer ? $parent.timer.getTimeValues().toString() : '00:00:00' }}
       </div>
@@ -33,10 +33,18 @@
         />
         You turn off camera
       </div>
+      <div v-if="local" class="absolute z-20 left-0 top-0 pl-4 pt-4">
+        <button
+          @click="openSettings"
+          class="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow"
+        >
+          <v-settings-icon width="24" height="24" class="text-black" />
+        </button>
+      </div>
       <div
         v-if="local"
-        class="absolute z-50"
-        style="top: 104px; right: 16px;"
+        class="absolute centered-y z-50"
+        style="left: 16px;"
       >
         <div
           class="relative h-40 w-1 rounded-full overflow-hidden"
@@ -107,6 +115,7 @@ import VMicMutedIcon from '@/components/icons/MicMuted.vue';
 import VVideocamIcon from '@/components/icons/Videocam.vue';
 import VVideocamOffIcon from '@/components/icons/VideocamOff.vue';
 import VCallEndIcon from '@/components/icons/CallEnd.vue';
+import VSettingsIcon from '@/components/icons/Settings.vue';
 import createAudioMeter from '@/audioMeter';
 
 /* eslint-disable no-param-reassign */
@@ -176,15 +185,6 @@ export default {
         this.audioTrack.enabled = !this.audioTrack.enabled;
         this.$emit('mute', !this.audioTrack.enabled);
       }
-      // stream.getTracks().forEach((track) => {
-      //   if (track.kind === type) {
-      //     track.enabled = !track.enabled;
-      //   }
-      // if (type === 'audio') {
-      //   this.localMuted = !this.localMuted;
-      //   this.$emit('mute', this.localMuted);
-      // }
-      // });
     },
     async doConnectStream(stream) {
       if (stream) {
@@ -209,6 +209,9 @@ export default {
       // set up the next visual callback
       this.rafID = window.requestAnimationFrame(this.drawLoop);
     },
+    openSettings() {
+      console.log('Open settings');
+    },
   },
   async mounted() {
     await this.doConnectStream(this.stream);
@@ -222,7 +225,7 @@ export default {
     },
   },
   components: {
-    VMicIcon, VVideocamOffIcon, VCallEndIcon, VMicMutedIcon, VVideocamIcon,
+    VMicIcon, VVideocamOffIcon, VCallEndIcon, VMicMutedIcon, VVideocamIcon, VSettingsIcon,
   },
 };
 </script>
@@ -233,12 +236,8 @@ export default {
   margin: 0 auto;
 }
 .stream__container {
-  position: relative;
-  height: 0;
+  @apply relative h-0 overflow-hidden rounded bg-black;
   padding-top: 56.25%;
-  background:#202124;
-  /* width: 640px; */
-  overflow: hidden;
 }
 .stream__actions {
   position: absolute;
@@ -265,5 +264,15 @@ export default {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+.centered-y {
+  @apply absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.centered-x {
+  @apply absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 </style>

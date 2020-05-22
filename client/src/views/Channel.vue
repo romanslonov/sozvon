@@ -1,31 +1,32 @@
 <template>
-  <div class="min-h-screen flex flex-col items-center justify-center">
-    <div class="p-8">
-      <div>
-        <v-video
-          local
-          v-if="localStream"
-          :stream="localStream"
-          @hangup="handleHangup"
-          @mute="handleMute"
-          @upgrade="handleUpgrade"
-        />
-      </div>
-      <div class="flex pt-4 space-x-4">
-        <v-video
-          class="m-0"
-          v-for="(stream, i) in streams"
-          :key="i"
-          :stream="stream.src"
-          :muted="stream.muted"
-          width="148"
-        />
-      </div>
+  <div class="min-h-screen bg-black">
+    <div class="fixed top-0 bottom-0 left-0 w-56 bg-gray-900 space-y-4 p-4">
+      <v-video
+        v-for="(stream, i) in streams"
+        :key="i"
+        :stream="stream.src"
+        :muted="stream.muted"
+      />
     </div>
+
+    <div class="min-h-screen relative ml-56">
+      <v-video
+        class="absolute inset-0"
+        local
+        v-if="localStream"
+        :stream="localStream"
+        @hangup="handleHangup"
+        @mute="handleMute"
+        @upgrade="handleUpgrade"
+      />
+    </div>
+
+    <v-chat :socket="socket" />
   </div>
 </template>
 
 <script>
+import VChat from '@/components/Chat.vue';
 import VVideo from '@/components/Video.vue';
 import { SIGNAL_SERVER_URL, ICE_CONFIG } from '@/config';
 import io from 'socket.io-client';
@@ -200,7 +201,6 @@ export default {
       });
     },
     handlePeerAction(data) {
-      console.log(data);
       if (data.type === 'mute') {
         this.streams = this.streams.map((stream) => {
           if (stream.id === data.id) {
@@ -246,6 +246,6 @@ export default {
       track.stop();
     });
   },
-  components: { VVideo },
+  components: { VVideo, VChat },
 };
 </script>
