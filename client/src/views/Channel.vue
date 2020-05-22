@@ -72,8 +72,15 @@ export default {
       });
     },
     handleLeavePeer({ sid }) {
+      const peer = this.getPeer(sid);
+
+      if (peer) {
+        peer.pc.close();
+      }
+
       this.peers = this.peers.filter((c) => c.id !== sid);
       this.streams = this.streams.filter((s) => s.id !== sid);
+
       if (this.peers.length === 0) {
         this.timer.stop();
       }
@@ -119,6 +126,7 @@ export default {
       }
 
       if (signal.ice) {
+        // console.log('addIceCandidate', signal.ice);
         await remotePeer.pc.addIceCandidate(new RTCIceCandidate(signal.ice))
           .catch((e) => console.error(e));
       }
@@ -127,24 +135,25 @@ export default {
       const connection = { id: sid, pc: new RTCPeerConnection(ICE_CONFIG) };
       connection.pc.onicecandidate = (event) => this.gotIceCandidate(event, sid);
       connection.pc.oniceconnectionstatechange = (event) => this.checkPeerDisconnect(event, sid);
+      connection.pc.onnegotiationneeded = () => {
+        if (initCall) {
+          connection.pc.createOffer()
+            .then((description) => {
+              connection.pc.setLocalDescription(description)
+                .then(() => {
+                  this.socket.emit('signal', {
+                    to: sid,
+                    from: this.sid,
+                    sdp: connection.pc.localDescription,
+                  });
+                });
+            });
+        }
+      };
       connection.pc.ontrack = (event) => this.gotRemoteStream(event, sid);
       this.localStream
         .getTracks()
         .forEach((track) => connection.pc.addTrack(track, this.localStream));
-
-      if (initCall) {
-        connection.pc.createOffer()
-          .then((description) => {
-            connection.pc.setLocalDescription(description)
-              .then(() => {
-                this.socket.emit('signal', {
-                  to: sid,
-                  from: this.sid,
-                  sdp: connection.pc.localDescription,
-                });
-              });
-          });
-      }
 
       return connection;
     },

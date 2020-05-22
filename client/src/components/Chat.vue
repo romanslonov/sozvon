@@ -1,9 +1,14 @@
 <template>
   <div class="fixed top-0 right-0 bottom-0 flex flex-col justify-end w-56 pt-4 pr-4">
     <div v-if="opened" class="bg-white shadow rounded-sm mb-20">
-      <header class="uppercase text-xs font-bold mb-4 border-b p-2">Chat</header>
+      <header class="uppercase text-xs font-bold border-b p-2">Chat</header>
 
       <main class="p-2 space-y-1">
+        <div class="text-sm text-center" v-if="messages.length === 0">
+          <div class="text-2xl">🤔</div>
+          <div class="font-bold">Nothing here yet...</div>
+        </div>
+
         <div
           v-for="message in messages"
           class="text-sm"
@@ -20,8 +25,9 @@
 
       <footer class="border-t">
         <input
+          placeholder="Your message"
           v-model="content"
-          class="w-full px-2 py-1 rounded-sm text-sm outline-none"
+          class="w-full p-2 rounded-sm text-sm outline-none"
           @keydown.enter="send"
         />
       </footer>
