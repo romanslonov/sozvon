@@ -1,9 +1,9 @@
 <template>
-  <div class="fixed top-0 right-0 bottom-0 flex flex-col justify-end w-56 pt-4 pr-4">
-    <div v-if="opened" class="bg-white shadow rounded-sm mb-20">
-      <header class="uppercase text-xs font-bold border-b p-2">Chat</header>
+  <div class="w-64 bg-black" v-if="opened">
+    <div class="min-h-screen flex flex-col bg-white">
+      <header class="text-center uppercase text-sm font-bold border-b p-2">Chat</header>
 
-      <main class="p-2 space-y-1">
+      <main class="flex-grow p-2 space-y-1">
         <div class="text-sm text-center" v-if="messages.length === 0">
           <div class="text-2xl">🤔</div>
           <div class="font-bold">Nothing here yet...</div>
@@ -33,20 +33,20 @@
       </footer>
     </div>
 
-    <div class="absolute bottom-0 right-0 pb-4 pr-4">
+    <!-- <div class="absolute bottom-0 right-0 pb-4 pr-4">
       <button
         @click="toggleChat"
         class="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow"
       >
         <v-chat-icon width="24" height="24" class="text-black -mb-1" />
       </button>
-    </div>
+    </div> -->
   </div>
 </template>
 
 <script>
 import { nanoid } from 'nanoid';
-import VChatIcon from '@/components/icons/Chat.vue';
+// import VChatIcon from '@/components/icons/Chat.vue';
 
 export default {
   props: {
@@ -54,7 +54,7 @@ export default {
   },
   created() {},
   data: () => ({
-    opened: false,
+    opened: true,
     messages: [],
     content: '',
   }),
@@ -76,7 +76,7 @@ export default {
       }
     },
   },
-  components: { VChatIcon },
+  // components: { VChatIcon },
   watch: {
     socket(socket) {
       if (socket) {

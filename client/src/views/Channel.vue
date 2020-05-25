@@ -1,36 +1,39 @@
 <template>
-  <div class="min-h-screen bg-black">
-    <div class="fixed top-0 bottom-0 left-0 w-56 bg-gray-900 space-y-4 p-4">
-      <v-video
-        v-for="(stream, i) in streams"
-        :key="i"
-        :stream="stream.src"
-        :muted="stream.muted"
-      />
+  <div class="flex min-h-screen bg-gray-900">
+    <div class="flex items-center flex-grow min-h-screen p-8">
+      <div class="flex justify-center flex-wrap w-full -m-1">
+        <div class="w-full md:w-1/2 lg:w-1/3 p-1">
+          <v-local-stream
+            class="w-full"
+            :stream="localStream"
+          />
+        </div>
+        <div class="w-full md:w-1/2 lg:w-1/3 p-1" v-for="stream in streams" :key="stream.id">
+          <v-remote-stream
+            class="w-full"
+            :id="stream.id"
+            :stream="stream.src"
+            :audioMuted="stream.audioMuted"
+            :videoOff="stream.videoOff"
+          />
+        </div>
+      </div>
+      <v-panel-user :stream="localStream" />
     </div>
-
-    <div class="min-h-screen relative ml-56">
-      <v-video
-        class="absolute inset-0"
-        local
-        v-if="localStream"
-        :stream="localStream"
-        @hangup="handleHangup"
-        @mute="handleMute"
-        @upgrade="handleUpgrade"
-      />
-    </div>
-
     <v-chat :socket="socket" />
   </div>
 </template>
 
 <script>
+import VPanelUser from '@/components/UserPanel.vue';
+import VRemoteStream from '@/components/stream/Remote.vue';
+import VLocalStream from '@/components/stream/Local.vue';
 import VChat from '@/components/Chat.vue';
-import VVideo from '@/components/Video.vue';
+// import VVideo from '@/components/Video.vue';
 import { SIGNAL_SERVER_URL, ICE_CONFIG } from '@/config';
 import io from 'socket.io-client';
 import Timer from 'easytimer.js';
+import bus from '@/bus';
 
 export default {
   name: 'Channel',
@@ -53,6 +56,10 @@ export default {
       this.timer = new Timer();
       this.init();
     }
+    bus.$on('local.audio.mute', this.handleAudioMute);
+    bus.$on('local.video.off', this.handleVideoOff);
+    bus.$on('local.video.upgrade', this.handleUpgrade);
+    bus.$on('hangup', this.handleHangup);
   },
   methods: {
     async init() {
@@ -161,7 +168,8 @@ export default {
       if (this.streams.filter((s) => s.id === sid).length === 0) {
         this.streams.push({
           id: sid,
-          muted: false,
+          audioMuted: false,
+          videoOff: false,
           src: event.streams[0],
         });
       } else {
@@ -201,20 +209,40 @@ export default {
     handleHangup() {
       this.$router.push({ name: 'Home' }).catch(() => {});
     },
-    handleMute(value) {
+    handleAudioMute(value) {
       this.socket.emit('action', {
-        type: 'mute',
+        type: 'audioMute',
         muted: value,
         id: this.sid,
         room: this.$route.params.id,
       });
     },
+    handleVideoOff() {
+      const track = this.localStream.getVideoTracks()[0];
+      track.enabled = !track.enabled;
+      this.socket.emit('action', {
+        type: 'videoOff',
+        muted: track.enabled,
+        id: this.sid,
+        room: this.$route.params.id,
+      });
+    },
     handlePeerAction(data) {
-      if (data.type === 'mute') {
+      if (data.type === 'audioMute') {
         this.streams = this.streams.map((stream) => {
           if (stream.id === data.id) {
             const s = { ...stream };
-            s.muted = data.muted;
+            s.audioMuted = !s.audioMuted;
+            return s;
+          }
+          return stream;
+        });
+      }
+      if (data.type === 'videoOff') {
+        this.streams = this.streams.map((stream) => {
+          if (stream.id === data.id) {
+            const s = { ...stream };
+            s.videoOff = !s.videoOff;
             return s;
           }
           return stream;
@@ -255,6 +283,11 @@ export default {
       track.stop();
     });
   },
-  components: { VVideo, VChat },
+  components: {
+    VPanelUser,
+    VRemoteStream,
+    VLocalStream,
+    VChat,
+  },
 };
 </script>
