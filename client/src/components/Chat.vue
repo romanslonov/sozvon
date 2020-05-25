@@ -1,6 +1,6 @@
 <template>
   <div class="w-64 bg-black" v-if="opened">
-    <div class="min-h-screen flex flex-col bg-white">
+    <div class="h-full flex flex-col bg-white">
       <header class="text-center uppercase text-sm font-bold border-b p-2">Chat</header>
 
       <main class="flex-grow p-2 space-y-1">

@@ -8,7 +8,7 @@
         <v-mic-muted-icon v-if="audioMuted" width="32" height="32" class="text-white" />
         <v-mic-icon v-else width="32" height="32" class="text-white" />
       </div>
-      <div v-if="videoTrack && videoOff" class="centered z-50">
+      <div v-if="stream && videoTrack && videoOff" class="centered z-50">
         <v-videocam-off-icon width="32" height="32" class="text-white" />
       </div>
       <div v-if="stream" class="absolute z-10 right-0 bottom-0 pr-2 pb-2">
