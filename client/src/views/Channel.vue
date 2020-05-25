@@ -142,25 +142,25 @@ export default {
       const connection = { id: sid, pc: new RTCPeerConnection(ICE_CONFIG) };
       connection.pc.onicecandidate = (event) => this.gotIceCandidate(event, sid);
       connection.pc.oniceconnectionstatechange = (event) => this.checkPeerDisconnect(event, sid);
-      connection.pc.onnegotiationneeded = () => {
-        if (initCall) {
-          connection.pc.createOffer()
-            .then((description) => {
-              connection.pc.setLocalDescription(description)
-                .then(() => {
-                  this.socket.emit('signal', {
-                    to: sid,
-                    from: this.sid,
-                    sdp: connection.pc.localDescription,
-                  });
-                });
-            });
-        }
-      };
       connection.pc.ontrack = (event) => this.gotRemoteStream(event, sid);
       this.localStream
         .getTracks()
         .forEach((track) => connection.pc.addTrack(track, this.localStream));
+
+
+      if (initCall) {
+        connection.pc.createOffer()
+          .then((description) => {
+            connection.pc.setLocalDescription(description)
+              .then(() => {
+                this.socket.emit('signal', {
+                  to: sid,
+                  from: this.sid,
+                  sdp: connection.pc.localDescription,
+                });
+              });
+          });
+      }
 
       return connection;
     },

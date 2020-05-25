@@ -47,14 +47,17 @@
 <script>
 import { nanoid } from 'nanoid';
 // import VChatIcon from '@/components/icons/Chat.vue';
+import bus from '@/bus';
 
 export default {
   props: {
     socket: Object,
   },
-  created() {},
+  created() {
+    bus.$on('chat.toggle', this.toggleChat);
+  },
   data: () => ({
-    opened: true,
+    opened: false,
     messages: [],
     content: '',
   }),

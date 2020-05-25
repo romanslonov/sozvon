@@ -13,7 +13,7 @@
       </div>
       <div v-if="stream" class="absolute z-10 right-0 bottom-0 pr-2 pb-2">
         <v-mic-muted-icon
-          v-if="audioMuted"
+          v-if="videoTrack && audioMuted"
           class="text-white"
           width="24"
           height="24"

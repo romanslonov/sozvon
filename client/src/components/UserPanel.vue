@@ -1,9 +1,32 @@
 <template>
   <div
     v-if="stream"
-    class="fixed bottom-0 left-0 right-0 flex items-center justify-between mr-64 pb-4"
+    class="fixed z-40 bottom-0 left-0 right-0 flex items-center justify-between px-4 pb-4"
+    :class="[{'mr-64': chatOpened}]"
   >
-    <div></div>
+    <div>
+      <button
+        @click="openSettings"
+        class="
+          flex
+          items-center
+          justify-center
+          h-12
+          w-12
+          bg-black
+          bg-opacity-50
+          rounded-full
+          shadow
+          focus:outline-none
+        "
+      >
+        <v-settings-icon
+          width="24"
+          height="24"
+          class="text-white"
+        />
+      </button>
+    </div>
     <div class="flex items-center space-x-4">
       <button
         @click="toggleTrack(stream, 'audio')"
@@ -14,18 +37,25 @@
           h-12
           w-12
           rounded-full
-          bg-white
           shadow
           focus:outline-none
         "
+        :class="[audio.muted ? 'bg-white' : 'bg-black bg-opacity-50']"
       >
         <v-mic-muted-icon
           v-if="audio.muted"
           width="24"
           height="24"
-          class="text-black -mb-1"
+          class="-mb-1"
+          :class="[audio.muted ? 'text-black' : 'text-white']"
         />
-        <v-mic-icon v-else width="24" height="24" class="text-black -mb-1" />
+        <v-mic-icon
+          v-else
+          width="24"
+          height="24"
+          class="-mb-1"
+          :class="[audio.muted ? 'text-black' : 'text-white']"
+        />
       </button>
       <button
         @click="toggleTrack(stream, 'video')"
@@ -36,22 +66,22 @@
           h-12
           w-12
           rounded-full
-          bg-white
           shadow
           focus:outline-none
         "
+        :class="[video.off ? 'bg-white' : 'bg-black bg-opacity-50']"
       >
         <v-videocam-off-icon
           v-if="video.off"
           width="24"
           height="24"
-          class="text-black"
+          :class="[video.off ? 'text-black' : 'text-white']"
         />
         <v-videocam-icon
           v-else
           width="24"
           height="24"
-          class="text-black"
+          :class="[video.off ? 'text-black' : 'text-white']"
         />
       </button>
       <button
@@ -71,7 +101,24 @@
         <v-call-end-icon width="24" height="24" class="text-white" />
       </button>
     </div>
-    <div></div>
+    <div>
+      <button
+        @click="toggleChat"
+        class="
+          flex
+          items-center
+          justify-center
+          h-12
+          w-12
+          rounded-full
+          shadow
+          focus:outline-none
+        "
+        :class="[chatOpened ? 'bg-white' : 'bg-black bg-opacity-50']"
+      >
+        <v-chat-icon width="20" height="20" :class="[chatOpened ? 'text-black' : 'text-white']" />
+      </button>
+    </div>
   </div>
 </template>
 
@@ -81,6 +128,8 @@ import VMicIcon from '@/components/icons/Mic.vue';
 import VCallEndIcon from '@/components/icons/CallEnd.vue';
 import VVideocamIcon from '@/components/icons/Videocam.vue';
 import VVideocamOffIcon from '@/components/icons/VideocamOff.vue';
+import VChatIcon from '@/components/icons/Chat.vue';
+import VSettingsIcon from '@/components/icons/Settings.vue';
 import bus from '@/bus';
 
 export default {
@@ -98,13 +147,8 @@ export default {
       upgraded: false,
       off: false,
     },
+    chatOpened: false,
   }),
-  computed: {
-    videoTrack() {
-      const tracks = this.stream.getVideoTracks();
-      return tracks.length > 0 ? tracks[0] : null;
-    },
-  },
   methods: {
     toggleTrack(stream, type) {
       if (type === 'video') {
@@ -121,12 +165,25 @@ export default {
         bus.$emit('local.audio.mute', this.audio.muted);
       }
     },
+    toggleChat() {
+      this.chatOpened = !this.chatOpened;
+      return bus.$emit('chat.toggle');
+    },
+    openSettings() {
+
+    },
     handleHangup() {
       bus.$emit('hangup');
     },
   },
   components: {
-    VMicIcon, VMicMutedIcon, VCallEndIcon, VVideocamIcon, VVideocamOffIcon,
+    VMicIcon,
+    VMicMutedIcon,
+    VCallEndIcon,
+    VVideocamIcon,
+    VVideocamOffIcon,
+    VChatIcon,
+    VSettingsIcon,
   },
 };
 </script>
