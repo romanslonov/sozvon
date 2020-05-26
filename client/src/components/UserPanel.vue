@@ -1,11 +1,10 @@
 <template>
   <div
-    v-if="stream"
     class="fixed z-40 bottom-0 left-0 right-0 flex items-center justify-between px-4 pb-4"
     :class="[{'mr-64': chatOpened}]"
   >
     <div>
-      <button
+      <!-- <button
         @click="openSettings"
         class="
           flex
@@ -25,11 +24,11 @@
           height="24"
           class="text-white"
         />
-      </button>
+      </button> -->
     </div>
     <div class="flex items-center space-x-4">
       <button
-        @click="toggleTrack(stream, 'audio')"
+        @click="toggleTrack('audio')"
         class="
           flex
           items-center
@@ -57,8 +56,8 @@
           :class="[audio.muted ? 'text-black' : 'text-white']"
         />
       </button>
-      <button
-        @click="toggleTrack(stream, 'video')"
+      <!-- <button
+        @click="toggleTrack('video')"
         class="
           flex
           items-center
@@ -83,7 +82,7 @@
           height="24"
           :class="[video.off ? 'text-black' : 'text-white']"
         />
-      </button>
+      </button> -->
       <button
         @click="handleHangup"
         class="
@@ -102,7 +101,7 @@
       </button>
     </div>
     <div>
-      <button
+      <!-- <button
         @click="toggleChat"
         class="
           flex
@@ -117,7 +116,7 @@
         :class="[chatOpened ? 'bg-white' : 'bg-black bg-opacity-50']"
       >
         <v-chat-icon width="20" height="20" :class="[chatOpened ? 'text-black' : 'text-white']" />
-      </button>
+      </button> -->
     </div>
   </div>
 </template>
@@ -126,10 +125,10 @@
 import VMicMutedIcon from '@/components/icons/MicMuted.vue';
 import VMicIcon from '@/components/icons/Mic.vue';
 import VCallEndIcon from '@/components/icons/CallEnd.vue';
-import VVideocamIcon from '@/components/icons/Videocam.vue';
-import VVideocamOffIcon from '@/components/icons/VideocamOff.vue';
-import VChatIcon from '@/components/icons/Chat.vue';
-import VSettingsIcon from '@/components/icons/Settings.vue';
+// import VVideocamIcon from '@/components/icons/Videocam.vue';
+// import VVideocamOffIcon from '@/components/icons/VideocamOff.vue';
+// import VChatIcon from '@/components/icons/Chat.vue';
+// import VSettingsIcon from '@/components/icons/Settings.vue';
 import bus from '@/bus';
 
 export default {
@@ -150,7 +149,7 @@ export default {
     chatOpened: false,
   }),
   methods: {
-    toggleTrack(stream, type) {
+    toggleTrack(type) {
       if (type === 'video') {
         if (!this.video.upgraded) {
           this.video.upgraded = !this.video.upgraded;
@@ -162,7 +161,8 @@ export default {
       }
       if (type === 'audio') {
         this.audio.muted = !this.audio.muted;
-        bus.$emit('local.audio.mute', this.audio.muted);
+        // bus.$emit('local.audio.mute', this.audio.muted);
+        this.$emit('muteAudio');
       }
     },
     toggleChat() {
@@ -173,17 +173,18 @@ export default {
 
     },
     handleHangup() {
-      bus.$emit('hangup');
+      // bus.$emit('hangup');
+      this.$emit('hangup');
     },
   },
   components: {
     VMicIcon,
     VMicMutedIcon,
     VCallEndIcon,
-    VVideocamIcon,
-    VVideocamOffIcon,
-    VChatIcon,
-    VSettingsIcon,
+    // VVideocamIcon,
+    // VVideocamOffIcon,
+    // VChatIcon,
+    // VSettingsIcon,
   },
 };
 </script>

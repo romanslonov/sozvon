@@ -4,6 +4,13 @@ import './registerServiceWorker';
 import router from './router';
 import store from './store';
 import './main.css';
+import { state } from './state';
+
+Vue.mixin({
+  data() {
+    return { state };
+  },
+});
 
 Vue.config.productionTip = false;
 
