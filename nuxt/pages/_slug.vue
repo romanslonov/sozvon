@@ -28,7 +28,6 @@
 </template>
 
 <script>
-import { SIGNAL_SERVER_URL, ICE_CONFIG } from '@/config'
 import io from 'socket.io-client'
 import Timer from 'easytimer.js'
 
@@ -48,7 +47,7 @@ export default {
       audio: true
     }
   }),
-  created () {
+  mounted () {
     if (!this.socket) {
       this.timer = new Timer()
       this.init()
@@ -72,7 +71,7 @@ export default {
       const stream = await navigator.mediaDevices.getUserMedia(this.constraints)
       this.localStream = stream
 
-      this.socket = io(SIGNAL_SERVER_URL)
+      this.socket = io(this.$config.HOST)
 
       this.socket.on('connect', () => {
         this.sid = this.socket.id
@@ -147,7 +146,7 @@ export default {
       }
     },
     setupPeer (sid, initCall = false) {
-      const connection = { id: sid, pc: new RTCPeerConnection(ICE_CONFIG) }
+      const connection = { id: sid, pc: new RTCPeerConnection(this.$config.ICE_CONFIG) }
       connection.pc.onicecandidate = event => this.gotIceCandidate(event, sid)
       connection.pc.oniceconnectionstatechange = event => this.checkPeerDisconnect(event, sid)
       connection.pc.ontrack = event => this.gotRemoteStream(event, sid)

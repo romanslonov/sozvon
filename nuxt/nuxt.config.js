@@ -42,5 +42,20 @@ export default {
 
   // Build Configuration (https://go.nuxtjs.dev/config-build)
   build: {
+  },
+  publicRuntimeConfig: {
+    HOST: process.env.HOST || 'http://localhost:3000',
+    ICE_CONFIG: {
+      iceTransportPolicy: 'all',
+      reconnectTimer: 3000,
+      iceServers: [
+        { urls: 'stun:stun.sozvon.co:5349' },
+        {
+          urls: 'turn:turn.sozvon.co:5349',
+          username: process.env.TURN_USERNAME,
+          credential: process.env.TURN_PASSWORD
+        }
+      ]
+    }
   }
 }
