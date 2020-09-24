@@ -7,7 +7,7 @@ const server = require('http').createServer(app.callback());
 const io = require('socket.io')(server);
 
 const config = {
-  port: 3000,
+  port: process.env.PORT || 4000,
   host: process.env.HOST || 'localhost',
   max: 50,
 };
