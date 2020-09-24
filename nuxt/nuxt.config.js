@@ -48,7 +48,7 @@ export default {
     host: process.env.HOST || 'localhost'
   },
   publicRuntimeConfig: {
-    HOST: process.env.HOST || 'http://localhost:3000',
+    SOCKET_HOST: process.env.SOCKET_HOST || 'http://localhost:4000',
     ICE_CONFIG: {
       iceTransportPolicy: 'all',
       reconnectTimer: 3000,

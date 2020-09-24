@@ -71,7 +71,7 @@ export default {
       const stream = await navigator.mediaDevices.getUserMedia(this.constraints)
       this.localStream = stream
 
-      this.socket = io(this.$config.HOST)
+      this.socket = io(this.$config.SOCKET_HOST)
 
       this.socket.on('connect', () => {
         this.sid = this.socket.id
