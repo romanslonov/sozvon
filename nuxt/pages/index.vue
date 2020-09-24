@@ -41,7 +41,7 @@ export default {
       id: ''
     }
   }),
-  created () {
+  mounted () {
     this.form.id = process.env.NODE_ENV === 'development' ? 'development' : nanoid(5)
   },
   methods: {
