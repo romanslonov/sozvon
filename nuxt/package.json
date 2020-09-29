@@ -1,5 +1,10 @@
 {
-  "name": "client2",
+  "name": "sozvon.co",
+  "description": "Video and audio calls from anywhere in the world. Created for group calls.",
+  "author": {
+    "name": "Roman Slonov",
+    "email": "destabiliseus@gmail.com"
+  },
   "version": "1.0.0",
   "private": true,
   "scripts": {
