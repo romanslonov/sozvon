@@ -61,5 +61,13 @@ export default {
         }
       ]
     }
+  },
+  loading: {
+    color: '#2a47e4'
+  },
+  pwa: {
+    meta: {
+      ogTitle: 'Sozvon – Group voice & video chat'
+    }
   }
 }
