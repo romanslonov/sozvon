@@ -67,6 +67,33 @@
           shadow
           focus:outline-none
         "
+        :class="[screen.shared ? 'bg-white' : 'bg-black bg-opacity-50']"
+        @click="toggleScreenShare"
+      >
+        <ScreenShareOff
+          v-if="screen.shared"
+          width="24"
+          height="24"
+          :class="[screen.shared ? 'text-black' : 'text-white']"
+        />
+        <ScreenShare
+          v-else
+          width="24"
+          height="24"
+          :class="[screen.shared ? 'text-black' : 'text-white']"
+        />
+      </button>
+      <button
+        class="
+          flex
+          items-center
+          justify-center
+          h-12
+          w-12
+          rounded-full
+          shadow
+          focus:outline-none
+        "
         :class="[video.off ? 'bg-white' : 'bg-black bg-opacity-50']"
         @click="toggleTrack(stream, 'video')"
       >
@@ -146,6 +173,9 @@ export default {
       upgraded: false,
       off: false
     },
+    screen: {
+      shared: false
+    },
     chatOpened: false
   }),
   methods: {
@@ -153,26 +183,30 @@ export default {
       if (type === 'video') {
         if (!this.video.upgraded) {
           this.video.upgraded = !this.video.upgraded
-          // bus.$emit('local.video.upgrade');
+          this.$nuxt.$emit('local.video.upgrade')
         } else {
           this.video.off = !this.video.off
-          // bus.$emit('local.video.off');
+          this.$nuxt.$emit('local.video.off')
         }
       }
       if (type === 'audio') {
         this.audio.muted = !this.audio.muted
-        // bus.$emit('local.audio.mute', this.audio.muted);
+        this.$nuxt.$emit('local.audio.mute', this.audio.muted)
       }
     },
     toggleChat () {
       this.chatOpened = !this.chatOpened
-      // return bus.$emit('chat.toggle');
+      this.$nuxt.$emit('chat.toggle')
+    },
+    toggleScreenShare () {
+      this.screen.shared = !this.screen.shared
+      this.$nuxt.$emit('local.screen.share', this.screen.shared)
     },
     openSettings () {
 
     },
     handleHangup () {
-      // bus.$emit('hangup');
+      this.$nuxt.$emit('hangup')
     }
   }
 }

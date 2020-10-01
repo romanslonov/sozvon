@@ -52,10 +52,12 @@ export default {
       this.timer = new Timer()
       this.init()
     }
-    // bus.$on('local.audio.mute', this.handleAudioMute)
-    // bus.$on('local.video.off', this.handleVideoOff)
-    // bus.$on('local.video.upgrade', this.handleUpgrade)
-    // bus.$on('hangup', this.handleHangup)
+    this.$nuxt.$on('local.audio.mute', this.handleAudioMute)
+    this.$nuxt.$on('local.screen.share', this.handleScreenSharing)
+    this.$nuxt.$on('local.audio.mute', this.handleAudioMute)
+    this.$nuxt.$on('local.video.off', this.handleVideoOff)
+    this.$nuxt.$on('local.video.upgrade', this.handleUpgrade)
+    this.$nuxt.$on('hangup', this.handleHangup)
   },
   beforeDestroy () {
     if (this.socket) {
@@ -171,6 +173,7 @@ export default {
       return connection
     },
     gotRemoteStream (event, sid) {
+      console.log(event)
       if (this.streams.filter(s => s.id === sid).length === 0) {
         this.streams.push({
           id: sid,
@@ -215,7 +218,7 @@ export default {
       return this.peers.find(c => c.id === sid)
     },
     handleHangup () {
-      this.$router.push({ name: 'Home' }).catch(() => { })
+      this.$router.push({ path: '/' })
     },
     handleAudioMute (value) {
       this.socket.emit('action', {
@@ -280,6 +283,32 @@ export default {
               })
           })
       })
+    },
+    async handleScreenSharing () {
+      const constraints = { audio: true, video: true }
+
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia(constraints)
+
+        this.peers.forEach((peer) => {
+          stream
+            .getTracks()
+            .forEach(track => peer.pc.addTrack(track, stream))
+          peer.pc.createOffer()
+            .then((description) => {
+              peer.pc.setLocalDescription(description)
+                .then(() => {
+                  this.socket.emit('signal', {
+                    to: peer.id,
+                    from: this.sid,
+                    sdp: peer.pc.localDescription
+                  })
+                })
+            })
+        })
+      } catch (error) {
+        window.console.log(error)
+      }
     }
   },
   head () {
